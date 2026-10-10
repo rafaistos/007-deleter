@@ -20,7 +20,7 @@ jobs:
           $errs = $null; $tokens = $null
           [void][System.Management.Automation.Language.Parser]::ParseFile("$PWD\007Deleter.ps1", [ref]$tokens, [ref]$errs)
           if ($errs) { $errs | ForEach-Object { Write-Error "$($_.Extent.StartLineNumber): $($_.Message)" }; exit 1 }
-          Write-Host 'Składnia poprawna.'
+          Write-Host 'Syntax OK.'
 
       - name: Zbuduj 007Deleter.exe
         shell: powershell
@@ -29,7 +29,7 @@ jobs:
           Install-Module ps2exe -RequiredVersion 1.0.13 -Scope CurrentUser -Force
           Invoke-PS2EXE -inputFile .\007Deleter.ps1 -outputFile .\007Deleter.exe -noConsole -STA `
             -title '007 Deleter' -product '007 Deleter' -version '1.0.0.0'
-          if (-not (Test-Path .\007Deleter.exe)) { throw 'Nie powstał plik exe.' }
+          if (-not (Test-Path .\007Deleter.exe)) { throw 'EXE was not created.' }
           Get-Item .\007Deleter.exe | Select-Object Name, Length
 
       - uses: actions/upload-artifact@v4
