@@ -42,6 +42,35 @@ function Remove-Keys($keys) {
     }
 }
 
+# Nadpisuje plik losowymi danymi, zmienia jego nazwę i dopiero usuwa.
+function Remove-Secure([string]$path) {
+    $item = Get-Item -LiteralPath $path -Force -ErrorAction Stop
+    if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+        Remove-Item -LiteralPath $path -Force -ErrorAction Stop
+        return
+    }
+    $item.Attributes = 'Normal'
+    $len = $item.Length
+    if ($len -gt 0) {
+        $buf = New-Object byte[] 1048576
+        $rng = New-Object Security.Cryptography.RNGCryptoServiceProvider
+        $fs = [IO.File]::Open($path, 'Open', 'Write', 'None')
+        try {
+            $left = $len
+            while ($left -gt 0) {
+                $n = [int][Math]::Min($left, $buf.Length)
+                $rng.GetBytes($buf)
+                $fs.Write($buf, 0, $n)
+                $left -= $n
+            }
+            $fs.Flush($true)
+        } finally { $fs.Dispose(); $rng.Dispose() }
+    }
+    $newName = [IO.Path]::GetRandomFileName()
+    try { Rename-Item -LiteralPath $path -NewName $newName -Force -ErrorAction Stop; $path = Join-Path $item.DirectoryName $newName } catch { }
+    Remove-Item -LiteralPath $path -Force -ErrorAction Stop
+}
+
 # ---------- kategorie ----------
 # Files = lista plików do usunięcia (liczy rozmiar), Extra = dodatkowa akcja (bez rozmiaru)
 
@@ -93,6 +122,8 @@ $categories = @(
        Extra = { ipconfig /flushdns | Out-Null } },
     @{ Id = 'bin'; Name = 'Kosz'; Desc = 'Opróżnia kosz na wszystkich dyskach. Tego nie da się cofnąć'; Default = $false
        Extra = { Clear-RecycleBin -Force -ErrorAction SilentlyContinue } },
+    @{ Id = 'freespace'; Name = 'Wolne miejsce na dysku systemowym'; Desc = 'Nadpisuje puste miejsce, by wcześniej usunięte pliki nie dały się odzyskać. Trwa długo, otwiera okno'; Default = $false
+       Extra = { Start-Process cmd.exe -ArgumentList "/c title 007 Deleter - nadpisywanie wolnego miejsca & cipher /w:$($env:SystemDrive)\ & pause" } },
     @{ Id = 'prefetch'; Name = 'Prefetch (wymaga administratora)'; Desc = 'Lista programów uruchamianych na tym komputerze wraz z datami'; Default = $false; Admin = $true
        Files = { Get-Files "$env:SystemRoot\Prefetch" '*.pf' $false } }
 )
@@ -207,12 +238,19 @@ $btnAll = New-Button 'Zaznacz wszystko' 560 140 $panel
 $btnAll.Font = New-Object Drawing.Font('Segoe UI', 9)
 $btnAdmin.Font = New-Object Drawing.Font('Segoe UI', 9)
 
+$chkSecure = New-Object Windows.Forms.CheckBox
+$chkSecure.Text = 'Bezpieczne usuwanie: nadpisz pliki losowymi danymi przed skasowaniem (wolniej)'
+$chkSecure.Location = New-Object Drawing.Point(20, 458)
+$chkSecure.Size = New-Object Drawing.Size(680, 24)
+$chkSecure.ForeColor = $text
+$form.Controls.Add($chkSecure)
+
 $log = New-Object Windows.Forms.TextBox
 $log.Multiline = $true
 $log.ReadOnly = $true
 $log.ScrollBars = 'Vertical'
-$log.Location = New-Object Drawing.Point(20, 464)
-$log.Size = New-Object Drawing.Size(680, 160)
+$log.Location = New-Object Drawing.Point(20, 490)
+$log.Size = New-Object Drawing.Size(680, 136)
 $log.BackColor = $panel
 $log.ForeColor = $text
 $log.BorderStyle = 'None'
@@ -275,7 +313,7 @@ $btnClean.Add_Click({
     if ($chosen.Count -eq 0) { Write-Log 'Nic nie zaznaczono.'; return }
 
     $names = ($chosen | ForEach-Object { '  - ' + $_.Name }) -join "`n"
-    $ask = [System.Windows.Forms.MessageBox]::Show("Usunąć bezpowrotnie:`n`n$names`n`nTego nie da się cofnąć.", '007 Deleter', 'YesNo', 'Warning')
+    $ask = [System.Windows.Forms.MessageBox]::Show("Usunąć bezpowrotnie:`n`n$names`n`nTego nie da się cofnąć.$(if ($chkSecure.Checked) { "`n`nTryb bezpieczny: pliki zostaną nadpisane, odzyskanie ich będzie praktycznie niemożliwe." })", '007 Deleter', 'YesNo', 'Warning')
     if ($ask -ne 'Yes') { return }
 
     Set-Busy $true
@@ -290,7 +328,7 @@ $btnClean.Add_Click({
             foreach ($f in @(& $c.Files)) {
                 try {
                     $len = $f.Length
-                    Remove-Item -LiteralPath $f.FullName -Force -ErrorAction Stop
+                    if ($chkSecure.Checked) { Remove-Secure $f.FullName } else { Remove-Item -LiteralPath $f.FullName -Force -ErrorAction Stop }
                     $ok++; $bytes += $len
                 } catch { $fail++ }
                 if (($ok + $fail) % 200 -eq 0) { [System.Windows.Forms.Application]::DoEvents() }

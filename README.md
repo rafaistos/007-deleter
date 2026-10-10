@@ -12,6 +12,11 @@ Program czyści komputer, na którym go uruchomisz, i nie zapisuje nic na pendri
 ## Co czyści
 Miniatury i ikony, pliki tymczasowe, ostatnio używane pliki, historię okna „Uruchom”, schowek, pamięć podręczną przeglądarek, historię Chrome/Edge/Brave (opcjonalnie), raporty błędów, pamięć DNS, kosz, Prefetch (po uruchomieniu jako administrator).
 
+## Bezpieczne usuwanie
+- Pole „Bezpieczne usuwanie” nadpisuje każdy plik losowymi danymi, zmienia jego nazwę i dopiero go kasuje. Jest wolniejsze, ale usunięte tak pliki praktycznie nie dają się odzyskać.
+- Kategoria „Wolne miejsce” uruchamia systemowe `cipher /w`, które nadpisuje puste miejsce na dysku i zaciera ślady wcześniejszych, zwykłych usunięć. Trwa długo (nawet godziny na dużym dysku).
+- Na dyskach SSD i pendrive'ach nadpisywanie nie daje pewności, bo kontroler sam decyduje, gdzie fizycznie zapisuje dane. Tam najpewniejsze jest szyfrowanie dysku (BitLocker) od początku używania.
+
 ## Czego nie rusza
 Haseł, ciasteczek, zakładek i Twoich dokumentów.
 
