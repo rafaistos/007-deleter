@@ -1,0 +1,45 @@
+name: Build EXE
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sprawdź składnię w Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $errs = $null; $tokens = $null
+          [void][System.Management.Automation.Language.Parser]::ParseFile("$PWD\007Deleter.ps1", [ref]$tokens, [ref]$errs)
+          if ($errs) { $errs | ForEach-Object { Write-Error "$($_.Extent.StartLineNumber): $($_.Message)" }; exit 1 }
+          Write-Host 'Składnia poprawna.'
+
+      - name: Zbuduj 007Deleter.exe
+        shell: powershell
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module ps2exe -RequiredVersion 1.0.13 -Scope CurrentUser -Force
+          Invoke-PS2EXE -inputFile .\007Deleter.ps1 -outputFile .\007Deleter.exe -noConsole -STA `
+            -title '007 Deleter' -product '007 Deleter' -version '1.0.0.0'
+          if (-not (Test-Path .\007Deleter.exe)) { throw 'Nie powstał plik exe.' }
+          Get-Item .\007Deleter.exe | Select-Object Name, Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: 007Deleter-exe
+          path: 007Deleter.exe
+
+      - name: Wydanie (tylko dla tagów v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release create "${{ github.ref_name }}" 007Deleter.exe --generate-notes

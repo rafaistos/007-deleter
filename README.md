@@ -1,26 +1,29 @@
 # 007 Deleter
 
-Przenośny program do czyszczenia śladów użytkowania Windows. Nie wymaga instalacji.
+Przenośny program do czyszczenia śladów użytkowania Windows. Działa bez instalacji, z pendrive'a i z dysku. Nie zapisuje nic na nośniku, z którego działa.
 
 ## Uruchomienie
-1. Skopiuj cały folder `007-deleter` na pendrive'a albo zostaw na dysku.
-2. Kliknij dwa razy `Uruchom 007 Deleter.bat`.
-3. Kliknij „Skanuj”, żeby zobaczyć, ile czego jest. Potem „Wyczyść zaznaczone”.
+**Plik exe:** w GitHubie wejdź w Actions → „Build EXE” → Run workflow. Po kilku minutach pobierz 007Deleter.exe z sekcji Artifacts.
+**Skrypt:** kliknij dwa razy `Uruchom 007 Deleter.bat`.
 
-Program czyści komputer, na którym go uruchomisz, i nie zapisuje nic na pendrive'ie.
+Pierwszy raz użyj „Skanuj”, które tylko pokazuje rozmiary. Przy „Uruchom jako administrator” (przycisk u góry) odblokowują się dodatkowe opcje.
 
-## Co czyści
-Miniatury i ikony, pliki tymczasowe, ostatnio używane pliki, historię okna „Uruchom”, schowek, pamięć podręczną przeglądarek, historię Chrome/Edge/Brave (opcjonalnie), raporty błędów, pamięć DNS, kosz, Prefetch (po uruchomieniu jako administrator).
+## Zakładka „Czyszczenie”
+Miniatury i ikony, pliki tymczasowe, ostatnie pliki (Windows i Office), historia okna „Uruchom”, ślady uruchamianych programów (UserAssist), ślady przeglądanych folderów (ShellBags), oś czasu Windows, schowek, pamięć podręczna i historia przeglądarek, ciasteczka, raporty błędów, pamięć DNS, kosz, zapisane sieci Wi-Fi, dzienniki zdarzeń, Prefetch, TRIM dla SSD, nadpisywanie wolnego miejsca (tylko HDD).
 
-## Bezpieczne usuwanie
-- Pole „Bezpieczne usuwanie” nadpisuje każdy plik losowymi danymi, zmienia jego nazwę i dopiero go kasuje. Jest wolniejsze, ale usunięte tak pliki praktycznie nie dają się odzyskać.
-- Kategoria „Wolne miejsce” uruchamia systemowe `cipher /w`, które nadpisuje puste miejsce na dysku i zaciera ślady wcześniejszych, zwykłych usunięć. Trwa długo (nawet godziny na dużym dysku).
-- Na dyskach SSD i pendrive'ach nadpisywanie nie daje pewności, bo kontroler sam decyduje, gdzie fizycznie zapisuje dane. Tam najpewniejsze jest szyfrowanie dysku (BitLocker) od początku używania.
+- **Szybkie czyszczenie** wykonuje domyślny zestaw jednym kliknięciem.
+- **Bezpieczne usuwanie** nadpisuje pliki losowymi danymi przed skasowaniem.
+- Wersja bez okna: `007Deleter.ps1 -Quick` (czyści domyślny zestaw i kończy).
+
+## Zakładka „Zabezpieczenia”
+Pokazuje, czy masz szyfrowanie dysku, Secure Boot, TRIM, hibernację i czyszczenie pliku wymiany, i podpowiada, co poprawić. Dla części ustawień są przyciski (administrator). Opcjonalnie włącza automatyczne szybkie czyszczenie przy logowaniu.
 
 ## Czego nie rusza
-Haseł, ciasteczek, zakładek i Twoich dokumentów.
+Haseł, zakładek (poza opcją Firefoksa, która to jasno mówi) i Twoich dokumentów.
 
 ## Ograniczenia
-- Pliki używane przez działający program (np. włączoną przeglądarkę) są pomijane. Zamknij przeglądarki przed czyszczeniem.
-- Usunięte pliki na zwykłym dysku mogą dać się odzyskać specjalnym oprogramowaniem. Dla pełnej pewności używa się szyfrowania dysku (BitLocker).
-- Historia Firefoksa jest pominięta, bo leży w jednym pliku z zakładkami.
+- Najpewniejszą ochroną jest szyfrowanie dysku (BitLocker) i silne logowanie. Ten program je tylko uzupełnia.
+- Na dysku SSD nadpisywanie plików i wolnego miejsca nie daje gwarancji. Tam liczy się szyfrowanie i TRIM.
+- Pliki używane przez działające programy są pomijane. Zamknij przeglądarki przed czyszczeniem.
+- Nie wyczyści kopii w chmurze (konto Google, Microsoft, OneDrive) ani pamięci RAM.
+- Program nie ma podpisu cyfrowego, więc antywirus (np. Bitdefender) może zgłaszać fałszywy alarm, zwłaszcza dla pliku exe i launchera .bat.
