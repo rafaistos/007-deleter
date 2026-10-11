@@ -879,7 +879,10 @@ $log.Font = $fMono
 $logCard.Controls.Add($log)
 $log.Add_HandleCreated({ try { [void][Native.Api]::SetWindowTheme($log.Handle, 'DarkMode_Explorer', $null) } catch { } })
 
+$script:logInitial = $false
+
 function Write-Log($msg) {
+    $script:logInitial = $false
     $log.AppendText("$msg`r`n")
     [System.Windows.Forms.Application]::DoEvents()
 }
@@ -940,6 +943,7 @@ function Set-Language($l) {
     }
     foreach ($k in $secKeys) { $secRows[$k].Name.Text = T ("s.$k") }
     Show-Security
+    if ($script:logInitial) { Show-StartMessage }
 }
 
 function Invoke-Selected($chosen) {
@@ -1081,10 +1085,16 @@ $btnAuto.Add_Click({
     Update-Security
 })
 
+function Show-StartMessage {
+    $log.Clear()
+    $log.AppendText((T 'm.ready') + "`r`n")
+    $log.AppendText(((T 'm.disk') -f (T ('tx.' + $(if ($script:diskInfo.Type -eq 'unk') { 'disk.unk' } else { $script:diskInfo.Type })))) + "`r`n")
+    $script:logInitial = $true
+}
+
 $script:diskInfo = Get-SystemDiskInfo
 Set-Language $script:lang
-Write-Log (T 'm.ready')
-Write-Log ((T 'm.disk') -f (T ('tx.' + $(if ($script:diskInfo.Type -eq 'unk') { 'disk.unk' } else { $script:diskInfo.Type }))))
+Show-StartMessage
 
 # ---------- podgląd (do testów) / preview (for tests) ----------
 

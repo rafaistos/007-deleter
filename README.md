@@ -6,6 +6,8 @@ Przenośny program do czyszczenia śladów użytkowania Windows. Działa bez ins
 **Plik exe:** w GitHubie wejdź w Actions → „Build EXE” → Run workflow. Po kilku minutach pobierz 007Deleter.exe z sekcji Artifacts.
 **Skrypt:** kliknij dwa razy `Uruchom 007 Deleter.bat`.
 
+Język (PL / EN) przełączysz w prawym górnym rogu okna. Domyślnie program wybiera język systemu.
+
 Pierwszy raz użyj „Skanuj”, które tylko pokazuje rozmiary. Przy „Uruchom jako administrator” (przycisk u góry) odblokowują się dodatkowe opcje.
 
 ## Zakładka „Czyszczenie”
