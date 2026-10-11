@@ -272,7 +272,7 @@ try {
 
 $I = @{
     pl = @{
-        'sub' = 'Zaznacz, co usunąć. „Skanuj” tylko pokazuje rozmiary, niczego nie kasuje.'
+        'sub' = 'Zaznacz, co usunąć. „Skanuj” niczego nie kasuje.'
         'tab.clean' = 'Czyszczenie'; 'tab.sec' = 'Zabezpieczenia'
         'admin.btn' = 'Uruchom jako administrator'; 'admin.on' = 'Tryb administratora'
         'adm.suffix' = '  ·  wymaga administratora'
@@ -337,7 +337,7 @@ $I = @{
         'm.enc.fail' = 'Nie udało się otworzyć ustawień szyfrowania.'
     }
     en = @{
-        'sub' = 'Choose what to remove. "Scan" only shows sizes and deletes nothing.'
+        'sub' = 'Choose what to remove. "Scan" deletes nothing.'
         'tab.clean' = 'Cleaning'; 'tab.sec' = 'Security'
         'admin.btn' = 'Run as administrator'; 'admin.on' = 'Administrator mode'
         'adm.suffix' = '  ·  requires administrator'
@@ -521,6 +521,7 @@ $brWhite = New-Object Drawing.SolidBrush([Drawing.Color]::White)
 $penBorder = New-Object Drawing.Pen($cBorder, 1)
 
 $fTitle = New-Object Drawing.Font('Segoe UI Semibold', 22)
+$fTitle2 = New-Object Drawing.Font('Segoe UI Semibold', 20)
 $fBold = New-Object Drawing.Font('Segoe UI Semibold', 10)
 $fNorm = New-Object Drawing.Font('Segoe UI', 10)
 $fSmall = New-Object Drawing.Font('Segoe UI', 8.5)
@@ -573,7 +574,7 @@ $buttonPaint = {
     }
     $txt = $cText
     if ($tag.Style -eq 'tab') { $txt = $(if ($tag.Active) { $cGreen } else { $cMuted }) }
-    if ($tag.Hover -and $s.Enabled -and -not ($tag.Style -eq 'tab' -and $tag.Active)) { $fill = [Drawing.ControlPaint]::Light($fill, 0.12) }
+    if ($tag.Hover -and $s.Enabled -and -not ($tag.Style -eq 'tab' -and $tag.Active)) { $fill = [System.Windows.Forms.ControlPaint]::Light($fill, 0.12) }
     if (-not $s.Enabled) { $fill = $cDis; $txt = $cMuted }
     $path = New-RoundPath 0 0 ($s.Width - 1) ($s.Height - 1) (8 * $sf)
     $br = New-Object Drawing.SolidBrush($fill)
@@ -683,17 +684,17 @@ $form.Add_HandleCreated({
 
 $title = New-Object Windows.Forms.Label
 $title.Text = '007 Deleter'
-$title.Font = $fTitle
+$title.Font = $fTitle2
 $title.ForeColor = $cGreen
-$title.Location = New-Object Drawing.Point(18, 10)
+$title.Location = New-Object Drawing.Point(18, 6)
 $title.AutoSize = $true
 $form.Controls.Add($title)
 
 $sub = New-Object Windows.Forms.Label
 $sub.ForeColor = $cMuted
 $sub.Font = $fNorm
-$sub.Location = New-Object Drawing.Point(21, 54)
-$sub.Size = New-Object Drawing.Size(470, 22)
+$sub.Location = New-Object Drawing.Point(21, 58)
+$sub.Size = New-Object Drawing.Size(470, 24)
 $form.Controls.Add($sub)
 
 $btnPL = New-Button $null 616 14 50 30 'tab' $form
@@ -744,14 +745,14 @@ $list.Add_HandleCreated({ try { [void][Native.Api]::SetWindowTheme($list.Handle,
 $rows = @{}
 foreach ($c in $categories) {
     $card = New-Object Windows.Forms.Panel
-    $card.Size = New-Object Drawing.Size(676, 66)
+    $card.Size = New-Object Drawing.Size(676, 76)
     $card.BackColor = $cCard
     $card.Margin = New-Object Windows.Forms.Padding(0, 0, 0, 6)
     $card.Cursor = 'Hand'
     Set-DoubleBuffer $card
     $card.Add_Paint($cardPaint)
 
-    $tg = New-Toggle 618 21 $card ([bool]$c.Default)
+    $tg = New-Toggle 618 26 $card ([bool]$c.Default)
     $locked = ($c.Admin -and -not $isAdmin)
     if ($locked) { Set-On $tg $false; $tg.Enabled = $false }
 
@@ -768,7 +769,7 @@ foreach ($c in $categories) {
     $ds.Font = $fSmall
     $ds.ForeColor = $cMuted
     $ds.Location = New-Object Drawing.Point(16, 32)
-    $ds.Size = New-Object Drawing.Size(520, 30)
+    $ds.Size = New-Object Drawing.Size(520, 40)
     $ds.BackColor = $cCard
     $ds.Tag = $tg.Tag
     $card.Controls.Add($ds)
@@ -777,7 +778,7 @@ foreach ($c in $categories) {
     $sz.TextAlign = 'MiddleRight'
     $sz.Font = $fBold
     $sz.ForeColor = $cGreen
-    $sz.Location = New-Object Drawing.Point(520, 20)
+    $sz.Location = New-Object Drawing.Point(520, 25)
     $sz.Size = New-Object Drawing.Size(90, 24)
     $sz.BackColor = $cCard
     $sz.Tag = $tg.Tag
@@ -1106,12 +1107,19 @@ if ($Preview) {
         $bmp.Save($path, [Drawing.Imaging.ImageFormat]::Png)
         $bmp.Dispose()
     }
+    [System.Windows.Forms.Application]::SetUnhandledExceptionMode([System.Windows.Forms.UnhandledExceptionMode]::CatchException)
+    [System.Windows.Forms.Application]::add_ThreadException({ param($sender, $ev) Add-Content -LiteralPath "$Preview-errors.txt" -Value $ev.Exception.ToString() })
     $form.Show()
     foreach ($id in 'thumbs', 'temp', 'recent', 'browsercache') { $rows[$id].Size.Text = '12,4 MB' }
     foreach ($l in 'pl', 'en') {
         Set-Language $l
         Switch-Pane $false
+        $btnScan.Tag.Hover = $true; $btnScan.Invalidate()
+        Invoke-Toggle $rows['browserhist'].Toggle.Tag
         Save-Shot "$Preview-$l-clean.png"
+        $btnScan.Tag.Hover = $false
+        $btnScan.PerformClick()
+        Save-Shot "$Preview-$l-scan.png"
         Switch-Pane $true
         Save-Shot "$Preview-$l-security.png"
     }
