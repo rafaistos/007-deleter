@@ -24,6 +24,18 @@ jobs:
         with:
           name: preview-shots
           path: shots
+      - name: Publish screenshots to branch preview-shots
+        shell: bash
+        run: |
+          cd shots
+          rm -f err.txt
+          git init -q
+          git checkout -q -b preview-shots
+          git config user.name github-actions
+          git config user.email actions@github.com
+          git add .
+          git commit -qm "Preview screenshots"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" preview-shots
 
   build:
     runs-on: windows-latest
