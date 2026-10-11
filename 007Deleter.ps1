@@ -279,7 +279,7 @@ $I = @{
         'btn.scan' = 'Skanuj'; 'btn.clean' = 'Wyczyść zaznaczone'; 'btn.quick' = 'Szybkie czyszczenie'; 'btn.all' = 'Zaznacz wszystko'
         'secure' = 'Bezpieczne usuwanie: nadpisz pliki losowymi danymi przed skasowaniem (wolniej)'
         'btn.refresh' = 'Odśwież'; 'btn.enc' = 'Ustawienia szyfrowania'; 'btn.hib' = 'Wyłącz hibernację'
-        'btn.page' = 'Czyść plik wymiany'; 'btn.trim' = 'Włącz TRIM'; 'btn.auto' = 'Auto-czyszczenie przy logowaniu: włącz / wyłącz'
+        'btn.page' = 'Czyść plik wymiany'; 'btn.trim' = 'Włącz TRIM'; 'btn.auto' = 'Auto-czyszczenie przy logowaniu'
         'action' = 'akcja'
         's.bitlocker' = 'Szyfrowanie dysku (BitLocker)'; 's.secureboot' = 'Secure Boot'; 's.disk' = 'Typ dysku systemowego'
         's.trim' = 'TRIM (czyszczenie SSD)'; 's.hibernate' = 'Hibernacja'; 's.pagefile' = 'Czyszczenie pliku wymiany przy wyłączaniu'
@@ -334,6 +334,7 @@ $I = @{
         'm.auto.confirm' = "Program skopiuje się do folderu:`n{0}`ni przy każdym logowaniu wykona szybkie czyszczenie. To zostawia na komputerze ślad, że używasz tego programu.`n`nWłączyć?"
         'm.auto.fail' = 'Nie udało się zmienić zadania automatycznego.'
         'm.adm.cancel' = 'Anulowano: brak zgody na uruchomienie jako administrator.'
+        'm.needadmin' = "Ta opcja wymaga administratora.`n`nUruchomić program ponownie jako administrator?"
         'm.enc.fail' = 'Nie udało się otworzyć ustawień szyfrowania.'
     }
     en = @{
@@ -344,7 +345,7 @@ $I = @{
         'btn.scan' = 'Scan'; 'btn.clean' = 'Clean selected'; 'btn.quick' = 'Quick clean'; 'btn.all' = 'Select all'
         'secure' = 'Secure delete: overwrite files with random data before deleting (slower)'
         'btn.refresh' = 'Refresh'; 'btn.enc' = 'Encryption settings'; 'btn.hib' = 'Turn off hibernation'
-        'btn.page' = 'Clear page file'; 'btn.trim' = 'Enable TRIM'; 'btn.auto' = 'Auto-clean at sign-in: on / off'
+        'btn.page' = 'Clear page file'; 'btn.trim' = 'Enable TRIM'; 'btn.auto' = 'Auto-clean at sign-in'
         'action' = 'action'
         's.bitlocker' = 'Disk encryption (BitLocker)'; 's.secureboot' = 'Secure Boot'; 's.disk' = 'System drive type'
         's.trim' = 'TRIM (SSD cleanup)'; 's.hibernate' = 'Hibernation'; 's.pagefile' = 'Clear page file at shutdown'
@@ -399,6 +400,7 @@ $I = @{
         'm.auto.confirm' = "The program will copy itself to:`n{0}`nand run a quick clean at every sign-in. This leaves a trace on the computer that you use this program.`n`nEnable?"
         'm.auto.fail' = 'Could not change the automatic task.'
         'm.adm.cancel' = 'Cancelled: administrator permission was not granted.'
+        'm.needadmin' = "This option needs administrator rights.`n`nRestart the program as administrator?"
         'm.enc.fail' = 'Could not open encryption settings.'
     }
 }
@@ -599,14 +601,15 @@ $togglePaint = {
     $g.Clear($s.Parent.BackColor)
     $w = $s.Width - 1; $h = $s.Height - 1
     $on = $s.Tag.On
-    $track = $(if (-not $s.Enabled) { $cDis } elseif ($on) { $cGreen } else { $cOff })
+    $dim = (-not $s.Enabled) -or $s.Tag.Locked
+    $track = $(if ($dim) { $cDis } elseif ($on) { $cGreen } else { $cOff })
     $path = New-RoundPath 0 0 $w $h ($h / 2)
     $br = New-Object Drawing.SolidBrush($track)
     $g.FillPath($br, $path)
     $br.Dispose(); $path.Dispose()
     $m = [single]($h * 0.17); $kd = $h - 2 * $m
     $kx = $(if ($on) { $w - $m - $kd } else { $m })
-    $kb = $(if ($s.Enabled) { $brWhite } else { $brMuted })
+    $kb = $(if ($dim) { $brMuted } else { $brWhite })
     $g.FillEllipse($kb, $kx, $m, $kd, $kd)
 }
 
@@ -635,7 +638,7 @@ function New-Toggle($x, $y, $parent, [bool]$on) {
     $t.Size = New-Object Drawing.Size(44, 24)
     $t.Cursor = 'Hand'
     Set-DoubleBuffer $t
-    $state = @{ On = $on; Guard = $null; Panel = $t }
+    $state = @{ On = $on; Guard = $null; Panel = $t; Locked = $false }
     $t.Tag = $state
     $t.Add_Paint($togglePaint)
     $t.Add_Click({ Invoke-Toggle $this.Tag })
@@ -649,6 +652,7 @@ function Set-On($t, [bool]$v) { $t.Tag.On = $v; $t.Invalidate() }
 
 function Invoke-Toggle($state) {
     $t = $state.Panel
+    if ($state.Locked) { Request-Admin; return }
     if (-not $t.Enabled) { return }
     $new = -not $state.On
     if ($new -and $state.Guard) { if (-not (& $state.Guard)) { return } }
@@ -670,6 +674,12 @@ $form.StartPosition = 'CenterScreen'
 $form.BackColor = $cBg
 $form.ForeColor = $cText
 $form.Font = $fNorm
+try {
+    if ($PSCommandPath) {
+        $icoFile = Join-Path (Split-Path $PSCommandPath) 'assets\007deleter.ico'
+        if (Test-Path -LiteralPath $icoFile) { $form.Icon = New-Object Drawing.Icon($icoFile) }
+    } else { $form.Icon = [Drawing.Icon]::ExtractAssociatedIcon((Get-SelfPath)) }
+} catch { }
 $form.FormBorderStyle = 'FixedSingle'
 $form.MaximizeBox = $false
 Set-DoubleBuffer $form
@@ -694,7 +704,7 @@ $sub = New-Object Windows.Forms.Label
 $sub.ForeColor = $cMuted
 $sub.Font = $fNorm
 $sub.Location = New-Object Drawing.Point(21, 58)
-$sub.Size = New-Object Drawing.Size(470, 24)
+$sub.Size = New-Object Drawing.Size(380, 24)
 $form.Controls.Add($sub)
 
 $btnPL = New-Button $null 616 14 50 30 'tab' $form
@@ -702,10 +712,10 @@ $btnPL.Text = 'PL'
 $btnEN = New-Button $null 670 14 50 30 'tab' $form
 $btnEN.Text = 'EN'
 
-$btnAdmin = New-Button 'admin.btn' 500 52 220 30 'ghost' $form
+$btnAdmin = New-Button 'admin.btn' 410 52 310 32 'ghost' $form
 $adminLbl = New-Object Windows.Forms.Label
-$adminLbl.Location = New-Object Drawing.Point(500, 54)
-$adminLbl.Size = New-Object Drawing.Size(220, 26)
+$adminLbl.Location = New-Object Drawing.Point(410, 55)
+$adminLbl.Size = New-Object Drawing.Size(310, 26)
 $adminLbl.TextAlign = 'MiddleRight'
 $adminLbl.ForeColor = $cGreen
 $adminLbl.Font = $fBold
@@ -754,7 +764,7 @@ foreach ($c in $categories) {
 
     $tg = New-Toggle 618 26 $card ([bool]$c.Default)
     $locked = ($c.Admin -and -not $isAdmin)
-    if ($locked) { Set-On $tg $false; $tg.Enabled = $false }
+    if ($locked) { Set-On $tg $false; $tg.Tag.Locked = $true }
 
     $nm = New-Object Windows.Forms.Label
     $nm.Font = $fBold
@@ -853,7 +863,9 @@ $btnEnc = New-Button 'btn.enc' 140 350 210 38 'primary' $paneSec
 $btnHib = New-Button 'btn.hib' 360 350 170 38 'ghost' $paneSec
 $btnPage = New-Button 'btn.page' 540 350 160 38 'ghost' $paneSec
 $btnTrim = New-Button 'btn.trim' 0 394 130 38 'ghost' $paneSec
-$btnAuto = New-Button 'btn.auto' 140 394 390 38 'ghost' $paneSec
+$btnAuto = New-Button 'btn.auto' 140 394 250 38 'ghost' $paneSec
+$btnAdmin2 = New-Button 'admin.btn' 400 394 300 38 'primary' $paneSec
+$btnAdmin2.Visible = -not $isAdmin
 $paneSec.Size = New-Object Drawing.Size(700, 436)
 $paneClean.Size = New-Object Drawing.Size(700, 436)
 
@@ -913,6 +925,23 @@ function Update-Security {
     $form.Cursor = 'Default'
 }
 
+function Restart-AsAdmin {
+    try {
+        $self = Get-SelfPath
+        if ($PSCommandPath) {
+            Start-Process powershell.exe -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File `"$self`""
+        } else {
+            Start-Process $self -Verb RunAs
+        }
+        $form.Close()
+    } catch { Write-Log (T 'm.adm.cancel') }
+}
+
+function Request-Admin {
+    $a = [System.Windows.Forms.MessageBox]::Show((T 'm.needadmin'), (T 'm.title'), 'YesNo', 'Question')
+    if ($a -eq 'Yes') { Restart-AsAdmin }
+}
+
 function Switch-Pane($sec) {
     $paneClean.Visible = -not $sec
     $paneSec.Visible = $sec
@@ -929,7 +958,7 @@ function Set-Language($l) {
     $btnPL.Invalidate(); $btnEN.Invalidate()
     $sub.Text = T 'sub'
     $adminLbl.Text = T 'admin.on'
-    foreach ($b in $btnAdmin, $navClean, $navSec, $btnScan, $btnClean, $btnQuick, $btnAll, $btnRefresh, $btnEnc, $btnHib, $btnPage, $btnTrim, $btnAuto) {
+    foreach ($b in $btnAdmin, $btnAdmin2, $navClean, $navSec, $btnScan, $btnClean, $btnQuick, $btnAll, $btnRefresh, $btnEnc, $btnHib, $btnPage, $btnTrim, $btnAuto) {
         $b.Text = T $b.Tag.Key
         $b.Invalidate()
     }
@@ -999,21 +1028,12 @@ $navSec.Add_Click({ Switch-Pane $true })
 $btnAll.Add_Click({
     foreach ($c in $categories) {
         $t = $rows[$c.Id].Toggle
-        if ($t.Enabled -and $c.Id -notin 'freespace', 'ffhist', 'wifi') { Set-On $t $true }
+        if ($t.Enabled -and -not $t.Tag.Locked -and $c.Id -notin 'freespace', 'ffhist', 'wifi') { Set-On $t $true }
     }
 })
 
-$btnAdmin.Add_Click({
-    try {
-        $self = Get-SelfPath
-        if ($PSCommandPath) {
-            Start-Process powershell.exe -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -STA -File `"$self`""
-        } else {
-            Start-Process $self -Verb RunAs
-        }
-        $form.Close()
-    } catch { Write-Log (T 'm.adm.cancel') }
-})
+$btnAdmin.Add_Click({ Restart-AsAdmin })
+$btnAdmin2.Add_Click({ Restart-AsAdmin })
 
 $btnScan.Add_Click({
     Set-Busy $true
@@ -1050,28 +1070,28 @@ $btnEnc.Add_Click({
 })
 
 $btnHib.Add_Click({
-    if (-not $isAdmin) { [void][System.Windows.Forms.MessageBox]::Show((T 'm.admin'), (T 'm.title'), 'OK', 'Information'); return }
+    if (-not $isAdmin) { Request-Admin; return }
     powercfg /h off | Out-Null
     Write-Log (T 'm.hib.done')
     Update-Security
 })
 
 $btnPage.Add_Click({
-    if (-not $isAdmin) { [void][System.Windows.Forms.MessageBox]::Show((T 'm.admin'), (T 'm.title'), 'OK', 'Information'); return }
+    if (-not $isAdmin) { Request-Admin; return }
     Set-ItemProperty -Path 'HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\Memory Management' -Name ClearPageFileAtShutdown -Value 1 -Type DWord
     Write-Log (T 'm.page.done')
     Update-Security
 })
 
 $btnTrim.Add_Click({
-    if (-not $isAdmin) { [void][System.Windows.Forms.MessageBox]::Show((T 'm.admin'), (T 'm.title'), 'OK', 'Information'); return }
+    if (-not $isAdmin) { Request-Admin; return }
     fsutil behavior set DisableDeleteNotify 0 | Out-Null
     Write-Log (T 'm.trim.done')
     Update-Security
 })
 
 $btnAuto.Add_Click({
-    if (-not $isAdmin) { [void][System.Windows.Forms.MessageBox]::Show((T 'm.admin'), (T 'm.title'), 'OK', 'Information'); return }
+    if (-not $isAdmin) { Request-Admin; return }
     try {
         if (Get-AutoTaskInstalled) {
             Disable-AutoTask

@@ -55,7 +55,7 @@ jobs:
         run: |
           Set-PSRepository PSGallery -InstallationPolicy Trusted
           Install-Module ps2exe -RequiredVersion 1.0.13 -Scope CurrentUser -Force
-          Invoke-PS2EXE -inputFile .\007Deleter.ps1 -outputFile .\007Deleter.exe -noConsole -STA `
+          Invoke-PS2EXE -inputFile .\007Deleter.ps1 -outputFile .\007Deleter.exe -noConsole -STA -iconFile .\assets\007deleter.ico `
             -title '007 Deleter' -product '007 Deleter' -version '1.0.0.0'
           if (-not (Test-Path .\007Deleter.exe)) { throw 'EXE was not created.' }
           Get-Item .\007Deleter.exe | Select-Object Name, Length
