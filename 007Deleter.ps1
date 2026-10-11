@@ -52,6 +52,47 @@ function Remove-Keys($keys) {
     }
 }
 
+# Removes history-like values and subkeys (names with recent/history/mru...) from a registry key tree.
+function Clear-RegHistory([string]$path, [string]$pattern = '(recent|history|mru)', [int]$depth = 4) {
+    if (-not (Test-Path -LiteralPath $path)) { return }
+    $key = Get-Item -LiteralPath $path -ErrorAction SilentlyContinue
+    if (-not $key) { return }
+    foreach ($n in $key.GetValueNames()) {
+        if ($n -match $pattern) { Remove-ItemProperty -LiteralPath $path -Name $n -Force -ErrorAction SilentlyContinue }
+    }
+    if ($depth -le 0) { return }
+    foreach ($sub in @(Get-ChildItem -LiteralPath $path -ErrorAction SilentlyContinue)) {
+        if ($sub.PSChildName -match $pattern) { Remove-Item -LiteralPath $sub.PSPath -Recurse -Force -ErrorAction SilentlyContinue }
+        else { Clear-RegHistory $sub.PSPath $pattern ($depth - 1) }
+    }
+}
+
+# Removes history sections and recent/history keys from an INI file, keeping every other byte intact.
+function Clear-IniHistory([string]$path) {
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return }
+    try {
+        $bytes = [IO.File]::ReadAllBytes($path)
+        if ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFF -and $bytes[1] -eq 0xFE) { $enc = New-Object Text.UnicodeEncoding($false, $true) }
+        elseif ($bytes.Length -ge 2 -and $bytes[0] -eq 0xFE -and $bytes[1] -eq 0xFF) { $enc = New-Object Text.UnicodeEncoding($true, $true) }
+        else { $enc = [Text.Encoding]::GetEncoding(28591) }
+        $text = $enc.GetString($bytes)
+        $bom = ''
+        if ($text -match '^(\uFEFF|\u00EF\u00BB\u00BF)') { $bom = $Matches[1]; $text = $text.Substring($bom.Length) }
+        $out = New-Object Collections.Generic.List[string]
+        $drop = $false
+        foreach ($ln in ($text -split '(?<=\n)')) {
+            if ($ln -match '^(\uFEFF|\u00EF\u00BB\u00BF)?\s*\[(.+?)\]') {
+                $drop = ($Matches[2] -match '(recent|history|mru)')
+                if ($drop) { continue }
+            } elseif ($drop) { continue }
+            elseif ($ln -match '^\s*(recent|history|mru)[^=]*=') { continue }
+            $out.Add($ln)
+        }
+        $new = $out -join ''
+        if ($new -ne $text) { [IO.File]::WriteAllBytes($path, $enc.GetBytes($bom + $new)) }
+    } catch { }
+}
+
 # Overwrites a file with random data, renames it, then deletes it.
 function Remove-Secure([string]$path) {
     $item = Get-Item -LiteralPath $path -Force -ErrorAction Stop
@@ -111,6 +152,37 @@ $categories = @(
                    $b = "HKCU:\Software\Microsoft\Office\$v\$a"
                    Remove-Keys @("$b\File MRU", "$b\Place MRU", "$b\User MRU")
                }
+           }
+       } },
+    @{ Id = 'archivers'; Default = $true
+       Name = @{ pl = 'Historia archiwizatorów (WinRAR, 7-Zip, WinZip)'; en = 'Archiver history (WinRAR, 7-Zip, WinZip)' }
+       Desc = @{ pl = 'Lista ostatnio otwieranych archiwów i folderów do rozpakowania (zamknij te programy)'; en = 'Recently opened archives and extraction folders (close these programs first)' }
+       Extra = {
+           Clear-RegHistory 'HKCU:\Software\WinRAR'
+           Clear-RegHistory 'HKCU:\Software\7-Zip'
+           Clear-RegHistory 'HKCU:\Software\Nico Mak Computing\WinZip'
+       } },
+    @{ Id = 'players'; Default = $true
+       Name = @{ pl = 'Historia odtwarzaczy (PotPlayer, VLC, MPC, GOM, WMP)'; en = 'Media player history (PotPlayer, VLC, MPC, GOM, WMP)' }
+       Desc = @{ pl = 'Ostatnio odtwarzane pliki i zapamiętane pozycje filmów (zamknij odtwarzacze)'; en = 'Recently played files and remembered playback positions (close the players first)' }
+       Extra = {
+           Clear-RegHistory 'HKCU:\Software\Daum\PotPlayerMini64' '(recent|history|mru|remember)'
+           Clear-RegHistory 'HKCU:\Software\Daum\PotPlayerMini' '(recent|history|mru|remember)'
+           foreach ($k in 'HKCU:\Software\MPC-HC\MPC-HC', 'HKCU:\Software\MPC-BE', 'HKCU:\Software\Gabest\Media Player Classic', 'HKCU:\Software\GRETECH\GomPlayer', 'HKCU:\Software\Microsoft\MediaPlayer\Player') {
+               Clear-RegHistory $k
+           }
+           Clear-IniHistory "$env:APPDATA\vlc\vlc-qt-interface.ini"
+       } },
+    @{ Id = 'viewers'; Default = $true
+       Name = @{ pl = 'Historia przeglądarek zdjęć i dokumentów'; en = 'Photo and document viewer history' }
+       Desc = @{ pl = 'IrfanView, XnView, Paint, WordPad, Adobe Reader: listy ostatnio otwartych plików'; en = 'IrfanView, XnView, Paint, WordPad, Adobe Reader: recently opened file lists' }
+       Extra = {
+           foreach ($k in 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Applets\Paint', 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Applets\Wordpad',
+                          'HKCU:\Software\Adobe\Acrobat Reader', 'HKCU:\Software\Adobe\Adobe Acrobat', 'HKCU:\Software\IrfanView', 'HKCU:\Software\XnView') {
+               Clear-RegHistory $k
+           }
+           foreach ($f in "$env:APPDATA\IrfanView\i_view64.ini", "$env:APPDATA\IrfanView\i_view32.ini", "$env:APPDATA\XnView\xnview.ini", "$env:APPDATA\XnViewMP\xnviewmp.conf") {
+               Clear-IniHistory $f
            }
        } },
     @{ Id = 'regmru'; Default = $true
@@ -313,7 +385,7 @@ $I = @{
         'm.nothing' = 'Nic nie zaznaczono.'
         'm.confirm' = "Usunąć bezpowrotnie:`n`n{0}`n`nTego nie da się cofnąć.{1}"
         'm.secnote' = "`n`nTryb bezpieczny: pliki zostaną nadpisane, odzyskanie ich będzie praktycznie niemożliwe."
-        'm.browser' = 'Uwaga: przeglądarka jest włączona, część plików będzie zablokowana. Zamknij ją i powtórz.'
+        'm.browser' = 'Uwaga: włączony jest program (przeglądarka, odtwarzacz, archiwizator...), który może blokować czyszczenie albo nadpisać jego efekt. Zamknij go i powtórz.'
         'm.cleaning' = 'Czyszczę: {0}...'
         'm.removed' = '  usunięto {0} plików ({1}), pominięto {2} (w użyciu)'
         'm.err' = '  nie udało się wykonać akcji'
@@ -379,7 +451,7 @@ $I = @{
         'm.nothing' = 'Nothing selected.'
         'm.confirm' = "Permanently delete:`n`n{0}`n`nThis cannot be undone.{1}"
         'm.secnote' = "`n`nSecure mode: files will be overwritten, recovering them will be practically impossible."
-        'm.browser' = 'Warning: a browser is running, some files will be locked. Close it and try again.'
+        'm.browser' = 'Warning: a program (browser, media player, archiver...) is running and may lock files or undo the cleaning. Close it and try again.'
         'm.cleaning' = 'Cleaning: {0}...'
         'm.removed' = '  removed {0} files ({1}), skipped {2} (in use)'
         'm.err' = '  the action failed'
@@ -906,7 +978,7 @@ function Set-Busy($busy) {
 }
 
 function Test-BrowsersRunning {
-    return [bool](Get-Process -Name 'chrome', 'msedge', 'brave', 'firefox' -ErrorAction SilentlyContinue)
+    return [bool](Get-Process -Name 'chrome', 'msedge', 'brave', 'firefox', 'WinRAR', '7zFM', 'PotPlayerMini64', 'PotPlayerMini', 'vlc', 'mpc-hc64', 'mpc-hc', 'i_view64', 'i_view32', 'xnview', 'xnviewmp', 'AcroRd32', 'Acrobat' -ErrorAction SilentlyContinue)
 }
 
 function Show-Security {

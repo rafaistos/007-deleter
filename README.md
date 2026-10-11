@@ -12,7 +12,7 @@ Przenośny czyścik śladów użytkowania Windows z prostym ciemnym interfejsem.
 Download `007Deleter.exe` from the latest **Release** (or from **Actions → Build EXE → Artifacts**), or run `007Deleter.ps1` with PowerShell. The exe is built from this repository by GitHub Actions.
 
 ### Cleaning tab
-Thumbnails and icons, temp files, recent files (Windows and Office), Run/search history, UserAssist and ShellBags traces, Windows activity history, clipboard, browser cache, Chromium history, Firefox history (also deletes bookmarks!), cookies, error reports, DNS cache, Recycle Bin, saved Wi-Fi networks, event logs, Prefetch, TRIM for SSDs, free-space wiping (HDD only).
+Thumbnails and icons, temp files, recent files (Windows and Office), history of archivers (WinRAR, 7-Zip, WinZip), media players (PotPlayer, VLC, MPC, GOM, WMP) and photo/document viewers (IrfanView, XnView, Paint, Adobe Reader), Run/search history, UserAssist and ShellBags traces, Windows activity history, clipboard, browser cache, Chromium history, Firefox history (also deletes bookmarks!), cookies, error reports, DNS cache, Recycle Bin, saved Wi-Fi networks, event logs, Prefetch, TRIM for SSDs, free-space wiping (HDD only).
 
 - **Quick clean** runs the default set in one click.
 - **Secure delete** overwrites files with random data before deleting them.
@@ -35,7 +35,7 @@ Shows whether disk encryption (BitLocker), Secure Boot, TRIM, hibernation and pa
 Pobierz `007Deleter.exe` z najnowszego **Release** (albo z **Actions → Build EXE → Artifacts**) lub uruchom skrypt `007Deleter.ps1`. Exe jest budowane z tego repozytorium przez GitHub Actions.
 
 ### Zakładka „Czyszczenie”
-Miniatury i ikony, pliki tymczasowe, ostatnie pliki (Windows i Office), historia „Uruchom” i wyszukiwania, ślady UserAssist i ShellBags, historia aktywności Windows, schowek, pamięć podręczna przeglądarek, historia Chromium, historia Firefoksa (usuwa też zakładki!), ciasteczka, raporty błędów, pamięć DNS, kosz, zapisane sieci Wi-Fi, dzienniki zdarzeń, Prefetch, TRIM dla SSD, nadpisywanie wolnego miejsca (tylko HDD).
+Miniatury i ikony, pliki tymczasowe, ostatnie pliki (Windows i Office), historia archiwizatorów (WinRAR, 7-Zip, WinZip), odtwarzaczy (PotPlayer, VLC, MPC, GOM, WMP) i przeglądarek zdjęć i dokumentów (IrfanView, XnView, Paint, Adobe Reader), historia „Uruchom” i wyszukiwania, ślady UserAssist i ShellBags, historia aktywności Windows, schowek, pamięć podręczna przeglądarek, historia Chromium, historia Firefoksa (usuwa też zakładki!), ciasteczka, raporty błędów, pamięć DNS, kosz, zapisane sieci Wi-Fi, dzienniki zdarzeń, Prefetch, TRIM dla SSD, nadpisywanie wolnego miejsca (tylko HDD).
 
 - **Szybkie czyszczenie** wykonuje domyślny zestaw jednym kliknięciem.
 - **Bezpieczne usuwanie** nadpisuje pliki losowymi danymi przed skasowaniem.
